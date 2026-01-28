@@ -1,0 +1,24 @@
+# IDE and editor files
+.idea/
+.vscode/
+*.sublime-*
+
+# Claude Code
+.claude/
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation source files (keep only code)
+*.docx
+*.doc
+
+# Logs directory (created at runtime)
+/upload/

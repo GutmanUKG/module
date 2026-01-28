@@ -1,0 +1,235 @@
+create table if not exists catalog_app_settings (
+    ID int(11) not null auto_increment,
+    CATALOG_APP_CATALOG_ID int(11) not null,
+    CATALOG_APP_USER varchar(255) not null,
+    CATALOG_APP_PASSWORD varchar(255) not null,
+    CATALOG_IBLOCK_ID int(11) not null,
+    CREATE_WORKER int(11) not null default 0,
+    UPDATE_WORKER int(11) not null default 0,
+    UPDATE_PROPERTY_WORKER int(11) not null default 0,
+    AUTO_UPDATE_GOODS int(11) not null default 0,
+    AUTO_UPDATE_RULES text,
+    primary key (ID)
+);
+
+create table if not exists catalog_app_workers (
+    ID int(11) not null auto_increment,
+    WORKER_ID varchar(255) not null,
+    BUSY int(1) not null default 0,
+    TIME_START varchar(255),
+    TIME_END varchar(255),
+    NEED_START int(1) not null default 0,
+    primary key (ID)
+);
+
+insert into catalog_app_workers (`WORKER_ID`) VALUES ("create");
+insert into catalog_app_workers (`WORKER_ID`) VALUES ("update_price");
+insert into catalog_app_workers (`WORKER_ID`) VALUES ("update_properties");
+insert into catalog_app_workers (`WORKER_ID`) VALUES ("deletedGoods");
+insert into catalog_app_workers (`WORKER_ID`) VALUES ("moveInSection");
+
+create table if not exists catalog_app_rules (
+    ID int(11) not null auto_increment,
+    SITE_PROFILE_ID int(11) not null default 0,
+    RULES varchar(255),
+    PRICE_ID int(11) not null default 0,
+    CATALOG_APP_ID int(11) not null default 0,
+    primary key (ID)
+);
+
+create table if not exists catalog_app_tasks (
+    ID int(11) not null auto_increment,
+    TYPE int(11) not null default 0,
+    TASK_ID int(11) not null default 0,
+    STATUS int(11) not null default 0,
+    ADD_DATE varchar(255),
+    UPDATE_DATE varchar(255),
+    NEED_START int(1) not null default 1,
+    primary key (ID)
+);
+
+create table if not exists catalog_app_data (
+    ID int(11) not null auto_increment,
+    GOODS_XML_ID varchar (255),
+    GOODS_SITE_ID int(11) not null default 0,
+    CATALOG_APP_ID int(11) not null default 0,
+    DELIVERY_TIME int(11) not null default 0,
+    DELIVERY_COUNTRY_TIME int(11) not null default 0,
+    DELIVERY_PRICE int(11) not null default 0,
+    DELIVERY_COUNTRY_PRICE int(11) not null default 0,
+    INSTALLMENT_PRICE decimal (13, 2) not null default 0,
+    MAX_INSTALLMENT_COST decimal (13, 2) not null default 0,
+    MIN_RETAIL_PRICE decimal (13, 2) not null default 0,
+    PRICE decimal (13, 2) not null default 0,
+    ORIGINAL_PRICE decimal (13, 2) not null default 0,
+    PROFIT decimal (13, 2) not null default 0,
+    CURRENCY varchar(255),
+
+    IN_STOCK_AMOUNT int(11) not null default 0,
+    SITE_CATEGORY_ID int(11) not null default 0,
+    CATALOG_APP_CATEGORY varchar(255),
+    VENDOR varchar(255),
+    MODEL varchar(255),
+    ARTICLE varchar(255),
+    COMMENT text,
+    PRODUCER text,
+    IMPORTER text,
+    SERVICE_CENTERS text,
+    WARRANTY int(11) not null default 0,
+    PRODUCT_LIFE_TIME int(11) not null default 0,
+    COLOR varchar (255),
+    EAN varchar (255),
+    SITE_PROFILE_ID int(11) not null default 0,
+    SUPPLIER_ID varchar (255),
+    primary key (ID)
+);
+
+ALTER TABLE catalog_app_data ADD INDEX GOODS_SITE_ID (GOODS_SITE_ID);
+ALTER TABLE catalog_app_data ADD INDEX CATALOG_APP_ID (CATALOG_APP_ID);
+ALTER TABLE catalog_app_data ADD INDEX SITE_PROFILE_ID (SITE_PROFILE_ID);
+
+create table if not exists catalog_app_section_connections (
+    ID int(11) not null auto_increment,
+    CATALOG_APP_SECTION_NAME varchar(255),
+    CATALOG_APP_SECTION_ID int(11) not null default 0,
+    SITE_SECTION_NAME varchar(255),
+    SITE_SECTION_ID int(1) not null default 0,
+    SECTION_LEVEL int(1) not null default 0,
+    NEED_GET int(1) not null default 0,
+    primary key (ID)
+);
+
+create table if not exists catalog_app_units (
+    ID int(11) not null auto_increment,
+    UNIT varchar(255),
+    UNIT_FULL_NAME varchar(255),
+    UNIT_SHORT_NAME varchar(255),
+    UNIT_DECLENSIONS varchar(255),
+    primary key (ID)
+);
+
+create table if not exists catalog_app_properties (
+    ID int(11) not null auto_increment,
+    SECTION_ID int(11) not null,
+    PROPERTY_ID int(11) not null,
+    SORT int(11) not null,
+    TYPE char(1) not null default "S",
+    GROUP_NAME varchar(255),
+    primary key (ID)
+);
+
+
+INSERT INTO `catalog_app_units` (`ID`, `UNIT`, `UNIT_FULL_NAME`, `UNIT_SHORT_NAME`) VALUES
+(1, 'NotUnit', 'Неизвестная величина', ''),
+(2, 'Nanometers', 'Нанометры', 'нм'),
+(3, 'Micrometers', 'Микрометры', 'мкм'),
+(4, 'Millimeters', 'Миллиметры', 'мм'),
+(5, 'Centimeters', 'Сантиметры', 'см'),
+(6, 'Meters', 'Метры', 'м'),
+(7, 'Milligrams', 'Миллиграммы', 'мг'),
+(8, 'Grams', 'Граммы', 'г'),
+(9, 'Kilograms', 'Килограммы', 'кг'),
+(10, 'Tons', 'Тонны', 'т'),
+(11, 'Seconds', 'Секунды', 'с'),
+(12, 'Minutes', 'Минуты', 'мин'),
+(13, 'Hours', 'Часы', 'ч'),
+(14, 'Days', 'Дни', 'дн'),
+(15, 'Weeks', 'Недели', 'нед'),
+(16, 'Months', 'Месяцы', 'мес'),
+(17, 'Years', 'Годы', 'год'),
+(18, 'Kelvins', 'Кельвины', 'К'),
+(19, 'DegreeCelsius', 'Градусы по цельсию', 'С'),
+(20, 'SquareMeters', 'Квадратные метры', 'м2'),
+(21, 'SquareCentimeters', 'Квадратные сантиметры', 'см2'),
+(22, 'Milliliters', 'Миллилитры', 'мм'),
+(23, 'Liters', 'Литры', 'л'),
+(24, 'CubicMillimeters', 'Кубические миллиметры', 'мм3'),
+(25, 'CubicCentimeters', 'Кубические сантиметры', 'см3'),
+(26, 'CubicMeters', 'Кубические метры', 'м3'),
+(27, 'Amperes', 'Амперы', 'А'),
+(28, 'Kiloamperes', 'Килоамперы', 'кА'),
+(29, 'Volts', 'Вольты', 'В'),
+(30, 'Kilovolts', 'Киловольты', 'кВ'),
+(31, 'Watts', 'Ватты', 'Вт'),
+(32, 'Kilowatts', 'Киловатты', 'кВт'),
+(33, 'Megawatts', 'Мегаватты', 'МВт'),
+(34, 'Ohms', 'Омы', 'Ом'),
+(35, 'Kiloohms', 'Килоомы', 'кОм'),
+(36, 'Candles', 'Канделы', 'кд'),
+(37, 'Luxes', 'Люксы', 'лк'),
+(38, 'Lumens', 'Люмены', 'лм'),
+(39, 'Joules', 'Джоули', 'Дж'),
+(40, 'Hertz', 'Герцы', 'Гц'),
+(41, 'Kilohertz', 'Килогерцы', 'кГц'),
+(42, 'Megahertz', 'Мегагерцы', 'МГц'),
+(43, 'Gigahertz', 'Гигагерцы', 'ГГц'),
+(44, 'Bits', 'Биты', 'бит'),
+(45, 'Bytes', 'Байты', 'байт'),
+(46, 'Kilobytes', 'Килобайты', 'Кб'),
+(47, 'Megabytes', 'Мегабайты', 'МБ'),
+(48, 'Gigabytes', 'Гигабайты', 'ГБ'),
+(49, 'Terabytes', 'Терабайты', 'ТБ'),
+(50, 'BitsPerSecond', 'Биты в секунду', 'бит/с'),
+(51, 'MegabitsPerSecond', 'Мегабиты в секунду', 'Мбит/с'),
+(52, 'GigabitsPerSecond', 'Гигабиты в секунду', 'Гбит/с'),
+(53, 'AmpereHours', 'Ампер-часы', 'А/ч'),
+(54, 'MilliampereHours', 'Миллиампер-часы', 'мА/ч'),
+(55, 'WattHours', 'Ватт-часы', 'Вт/ч'),
+(56, 'KilowattHours', 'Киловатт-часы', 'кВт/ч'),
+(57, 'MegawattHours', 'Мегаватт-часы', 'МВт/ч'),
+(58, 'Grands', 'Штуки', 'шт'),
+(59, 'GramsPerSquareCentimeter', 'Граммы на квадратный сантиметр', 'г/см2'),
+(60, 'GramsPerSquareMeter', 'Граммы на квадратный метр', 'г/м2'),
+(61, 'Inches', 'Дюймы', '\'\''),
+(62, 'CubicMetersPerMinute', 'Кубические метры в минуту', 'м3/мин'),
+(63, 'MetersPerSecond', 'Метры в секунду', 'м/с'),
+(64, 'MetersPerHour', 'Метры в час', 'м/ч'),
+(65, 'Percents', 'Проценты', '%'),
+(66, 'Pixels', 'Пиксели', 'п'),
+(67, 'Megapixels', 'Мегапиксели', 'Мп'),
+(68, 'Diaphragm', 'Диафрагма', ''),
+(69, 'FramesPerSeconds', 'Фреймы в секунду', 'fps'),
+(70, 'ScreenDensity', 'Разрешение экрана', 'пикс'),
+(71, 'Decibels', 'Децибелы', 'Дб'),
+(72, 'GramsPerMinute', 'Граммы в минуту', 'г/мин'),
+(73, 'KilogramsPerMinute', 'Килограммы в минуту', 'кг/мин'),
+(74, 'KilogramsPerHour', 'Килограммы в час', 'кг/ч'),
+(75, 'RotationsPerMinute', 'Обороты в минуту', 'об/мин'),
+(76, 'LitersPerHour', 'Литры в час', 'л/ч'),
+(77, 'Bars', 'Бары', 'бар'),
+(78, 'CubicMetersPerHour', 'Кубические метры в час', 'м3/ч'),
+(79, 'DotsPerInch', 'Точки на дюйм', 'DPI'),
+(80, 'MillilitersPerHour', 'Миллиметры в час', 'мм/ч'),
+(81, 'MillilitersPerSecond', 'Миллиметры в секунду', 'мм/с'),
+(82, 'MillilitersPerMinute', 'Миллиметры в минуту', 'мм/мин'),
+(83, 'PixelsPerInch', 'Пиксели на дюйм', 'PPI'),
+(84, 'LitersPerMinute', 'Литры в минуту', 'л/мин'),
+(85, 'LitersPerDays', 'Литры в день', 'л/дн'),
+(86, 'BeatsPerMinute', 'Удары в минуту', 'уд./мин'),
+(87, 'SheetsPerMinute', 'Страницы в минуту', 'стр/мин'),
+(88, 'SheetsPerSecond', 'Страницы в секунду', 'стр/с'),
+(89, 'Sheets', 'Листы', 'лист'),
+(90, 'InputOutputOperationsPerSecond', 'Опрерации ввода-вывода в секунду', 'IOPS'),
+(91, 'KilometersPerHour', 'Километры в час', 'км/ч'),
+(92, 'Kilometers', 'Километры', 'км'),
+(93, 'CentimetersPerMinute', 'Сантиметры в минуту', 'см/мин'),
+(94, 'MetersPerMinute', 'Метры в минуту', 'м/мин'),
+(95, 'KilogramsPerDays', 'Килограммы в день', 'кг/дн'),
+(96, 'FramesPerMinute', 'Кадры в минуту', ''),
+(97, 'Horsepowers', 'Лошадиные силы', 'лс'),
+(98, 'Milliseconds', 'Миллисекуды', 'мс'),
+(99, 'NewtonMeters', 'Ньютон-метры', 'Нм'),
+(100, 'MovesPerMinute', 'Ходы в минуту', ''),
+(101, 'DecibelsPerMilliwatt', 'Децибелы на милливатт', 'дБ/мВт'),
+(102, 'AngleDegrees', 'Градусы углов', '°'),
+(103, 'VoltAmperes', 'Вольт-амперы', 'ВА'),
+(104, 'MillionPacketsPerSecond', 'Миллионы пакетов в минуту', ''),
+(105, 'Dins', 'Вязкость (DIN)', 'DIN'),
+(106, 'GuideNumbers', 'Ведущие числа', ''),
+(107, 'StandardAtmospheres', 'Стандартные атмосферы', ''),
+(108, 'WattsPerKilogram', 'Ватты на килограмм', 'Вт/кг'),
+(109, 'KilobitsPerSecond', 'Килобиты в секунду', NULL),
+(110, 'ThousandGrands', 'Тысячи штук', NULL),
+(111, 'IsotropicDecibels', 'Изотропные децибелы', NULL),
+(112, 'GrandsPerSquareMeter', 'Штуки на метр квадратный', NULL),
+(113, 'DimensionlessQuantity', 'Безразмерная величина', NULL);
