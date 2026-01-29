@@ -3,13 +3,12 @@
 use Bitrix\Main\EventManager;
 use Bitrix\Main\Event;
 use Bitrix\Main\EventResult;
-use Bitrix\Sale\Delivery\Services\Manager as DeliveryManager;
 
 /**
  * Обработчик событий для модификации сроков доставки
  *
- * Перехватывает события расчёта доставки и модифицирует
- * название/описание службы, добавляя рассчитанный срок.
+ * Перехватывает событие расчёта доставки и устанавливает
+ * срок доставки (PERIOD_FROM / PERIOD_TO) в CalculationResult.
  */
 class DeliveryEventHandler
 {
@@ -20,7 +19,6 @@ class DeliveryEventHandler
     {
         $eventManager = EventManager::getInstance();
 
-        // Событие после расчёта доставки
         $eventManager->addEventHandler(
             'sale',
             'onSaleDeliveryServiceCalculate',
@@ -31,35 +29,36 @@ class DeliveryEventHandler
     /**
      * Обработчик события расчёта доставки
      *
-     * @param Event $event
-     * @return EventResult|null
+     * Модифицирует CalculationResult, устанавливая срок доставки
+     * на основе данных из catalog_app_data.
      */
     public static function onDeliveryCalculate(Event $event): ?EventResult
     {
         $parameters = $event->getParameters();
 
-        if (empty($parameters)) {
-            return null;
-        }
-
-        // Получаем данные расчёта
+        /** @var \Bitrix\Sale\Delivery\CalculationResult|null $result */
+        $result = $parameters['RESULT'] ?? null;
+        /** @var \Bitrix\Sale\Shipment|null $shipment */
         $shipment = $parameters['SHIPMENT'] ?? null;
         $deliveryId = $parameters['DELIVERY_ID'] ?? 0;
 
-        if (!$shipment || !$deliveryId) {
+        if (!$result || !$shipment || !$deliveryId) {
             return null;
         }
 
         try {
-            // Получаем товары из shipment
-            $basketItems = [];
-            $basket = $shipment->getCollection()->getOrder()->getBasket();
+            // Получаем ID товаров из отгрузки (не из всей корзины)
+            $productIds = [];
+            $shipmentItemCollection = $shipment->getShipmentItemCollection();
 
-            foreach ($basket as $basketItem) {
-                $basketItems[] = $basketItem->getProductId();
+            foreach ($shipmentItemCollection as $shipmentItem) {
+                $basketItem = $shipmentItem->getBasketItem();
+                if ($basketItem) {
+                    $productIds[] = $basketItem->getProductId();
+                }
             }
 
-            if (empty($basketItems)) {
+            if (empty($productIds)) {
                 return null;
             }
 
@@ -69,59 +68,71 @@ class DeliveryEventHandler
             $locationProperty = $propertyCollection->getDeliveryLocation();
             $locationCode = $locationProperty ? $locationProperty->getValue() : '';
 
-            $city = self::getCityFromLocation($locationCode);
+            if (empty($locationCode)) {
+                return null;
+            }
 
-            // Определяем тип доставки (курьер/самовывоз)
+            $city = self::getCityFromLocation($locationCode);
             $deliveryType = self::getDeliveryType($deliveryId);
 
-            // Получаем срок доставки
-            require_once($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/imarket.catalog_app/services/DeliveryTimeService.php');
-            $deliveryService = new \DeliveryTimeService();
-
-            // Берём максимальный срок из всех товаров корзины
+            // Берём максимальный срок из всех товаров отгрузки
             $maxDays = 0;
-            foreach ($basketItems as $productId) {
+            foreach ($productIds as $productId) {
                 $days = self::getProductDeliveryDays($productId);
                 if ($days > $maxDays) {
                     $maxDays = $days;
                 }
             }
 
-            if ($maxDays > 0) {
-                $formattedTime = $deliveryService->formatDeliveryTime($maxDays, $city, $deliveryType);
-
-                // Возвращаем модифицированный результат с информацией о сроке
-                return new EventResult(
-                    EventResult::SUCCESS,
-                    ['DELIVERY_TIME_TEXT' => $formattedTime]
-                );
+            if ($maxDays <= 0) {
+                $result->setPeriodDescription('???? ???????? ??????????');
+                return null;
             }
 
+            // Рассчитываем период и форматированный текст
+            $periodData = self::calculatePeriod($maxDays, $city, $deliveryType);
+
+            $service = new \DeliveryTimeService();
+            $formattedTime = $service->formatDeliveryTime($maxDays, $city, $deliveryType);
+
+            // Устанавливаем срок доставки напрямую в CalculationResult
+            $result->setPeriodFrom($periodData['from']);
+            $result->setPeriodTo($periodData['to']);
+            $result->setPeriodType('D');
+            $result->setPeriodDescription($formattedTime);
+
         } catch (\Exception $e) {
-            // Логируем ошибку, но не прерываем работу
+
+            // Не прерываем расчёт доставки при ошибке
         }
 
         return null;
     }
 
     /**
-     * Определить город по коду местоположения
+     * Определить город по коду местоположения Битрикс
      *
-     * @param string $locationCode
-     * @return string
+     * @param string $locationCode — код из b_sale_location.CODE
+     * @return string — almaty|astana
      */
     private static function getCityFromLocation(string $locationCode): string
     {
         $locationCode = strtoupper($locationCode);
 
-        // Маппинг кодов местоположений (нужно адаптировать под реальные коды сайта)
+        // Маппинг кодов местоположений (адаптировать под реальные коды сайта)
+        // Узнать коды: SELECT CODE FROM b_sale_location WHERE NAME_RU LIKE '%Алматы%'
         $cityMap = [
+            '0000000278' => 'almaty',
+            '0000000363' => 'astana',
             'ALMATY'     => 'almaty',
-            'АЛМАТЫ'     => 'almaty',
             'ASTANA'     => 'astana',
-            'АСТАНА'     => 'astana',
             'NUR-SULTAN' => 'astana',
         ];
+
+        // Точное совпадение
+        if (isset($cityMap[$locationCode])) {
+            return $cityMap[$locationCode];
+        }
 
         // Поиск по вхождению
         foreach ($cityMap as $key => $city) {
@@ -130,44 +141,69 @@ class DeliveryEventHandler
             }
         }
 
-        // По умолчанию - Алматы
+        // По умолчанию — Алматы
         return 'almaty';
     }
 
     /**
      * Определить тип доставки по ID службы
      *
-     * @param int $deliveryId
-     * @return string
+     * @param int $deliveryId — ID службы доставки из Битрикс
+     * @return string — courier|pickup
      */
     private static function getDeliveryType(int $deliveryId): string
     {
-        // Получаем информацию о службе доставки
-        $delivery = DeliveryManager::getById($deliveryId);
+        // ID служб самовывоза (заполнить реальными ID из Битрикс)
+        // Узнать: Магазин → Службы доставки → ID нужной службы
+        $pickupServiceIds = [
+            2,
+        ];
 
-        if ($delivery) {
-            $name = strtolower($delivery['NAME'] ?? '');
-            $code = strtolower($delivery['CODE'] ?? '');
-
-            // Определяем по названию/коду
-            $pickupKeywords = ['самовывоз', 'pickup', 'пункт выдачи', 'офис'];
-
-            foreach ($pickupKeywords as $keyword) {
-                if (strpos($name, $keyword) !== false || strpos($code, $keyword) !== false) {
-                    return 'pickup';
-                }
-            }
+        if (in_array($deliveryId, $pickupServiceIds, true)) {
+            return 'pickup';
         }
 
-        // По умолчанию - курьер
         return 'courier';
     }
 
     /**
-     * Получить срок доставки товара из БД
+     * Рассчитать диапазон периода доставки
      *
-     * @param int $productId
-     * @return int
+     * @param int $days — дни из catalog.app
+     * @param string $city
+     * @param string $type
+     * @return array{from: int, to: int}
+     */
+    private static function calculatePeriod(int $days, string $city, string $type): array
+    {
+        $city = strtolower($city);
+        $type = strtolower($type);
+
+
+        // Курьер: +1 день, диапазон
+        if ($type === 'courier') {
+            return ['from' => $days, 'to' => $days + 1];
+        }
+
+        // Самовывоз
+        if ($type === 'pickup') {
+            // Алматы: без изменений
+            if ($city === 'almaty') {
+                return ['from' => $days, 'to' => $days];
+            }
+            // Астана: +1-2 дня
+            if ($city === 'astana') {
+                return ['from' => $days + 1, 'to' => $days + 2];
+            }
+        }
+        return ['from' => $days, 'to' => $days];
+    }
+
+    /**
+     * Получить срок доставки товара из catalog_app_data
+     *
+     * @param int $productId — GOODS_SITE_ID
+     * @return int — количество дней (0 если не найдено)
      */
     private static function getProductDeliveryDays(int $productId): int
     {
@@ -178,7 +214,9 @@ class DeliveryEventHandler
         $result = $connection->query($sql);
 
         if ($row = $result->fetch()) {
-            return (int)$row['DELIVERY_TIME'];
+            $value = (int)$row['DELIVERY_TIME'];
+
+            return $value;
         }
 
         return 0;

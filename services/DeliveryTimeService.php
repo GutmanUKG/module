@@ -93,8 +93,11 @@ class DeliveryTimeService
         $result = $this->connection->query($sql);
 
         if ($row = $result->fetch()) {
-            return (int)$row['DELIVERY_TIME'];
+            $value = (int)$row['DELIVERY_TIME'];
+
+            return $value;
         }
+
 
         return null;
     }
@@ -123,8 +126,8 @@ class DeliveryTimeService
 
         // Курьерская доставка (для всех городов: +1 день, диапазон)
         if ($type === self::TYPE_COURIER) {
-            $minDays = $days + 1;
-            $maxDays = $minDays + 1;
+            $minDays = $days;
+            $maxDays = $days + 1;
             return $this->formatRange($minDays, $maxDays);
         }
 
@@ -132,13 +135,15 @@ class DeliveryTimeService
         if ($type === self::TYPE_PICKUP) {
             // Алматы: без изменений
             if ($city === self::CITY_ALMATY) {
-                return $this->formatDays($days);
+                $minDays = $days + 1;
+                $maxDays = $days + 2;
+                return $this->formatRange($minDays, $maxDays);
             }
 
             // Астана: +1-2 дня запаса, диапазон
             if ($city === self::CITY_ASTANA) {
-                $minDays = $days + 1;
-                $maxDays = $days + 2;
+                $minDays = $days + 2;
+                $maxDays = $days + 3;
                 return $this->formatRange($minDays, $maxDays);
             }
         }

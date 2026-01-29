@@ -11,5 +11,5 @@ Loc::loadMessages(__FILE__);
     ));
 
 // Регистрация обработчиков событий доставки
-DeliveryEventHandler::register();
+// DeliveryEventHandler::register();
 ?>

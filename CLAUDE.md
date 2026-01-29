@@ -106,10 +106,17 @@ $time = $service->getDeliveryTime($productId, 'almaty', 'courier'); // "2-3 дн
 ```
 
 **Event Integration:**
-`DeliveryEventHandler` automatically hooks into `onSaleDeliveryServiceCalculate` event to modify delivery service names with calculated times. The handler:
-1. Gets products from shipment basket
-2. Determines city from order's delivery location
-3. Calculates max delivery time across all products
-4. Returns formatted delivery time text
+`DeliveryEventHandler` hooks into `onSaleDeliveryServiceCalculate` event and modifies `CalculationResult` directly via `setPeriodFrom()` / `setPeriodTo()` / `setPeriodDescription()`. The handler:
+1. Gets products from shipment item collection (`getShipmentItemCollection()`)
+2. Determines city from order's delivery location (`getDeliveryLocation()`)
+3. Determines delivery type (courier/pickup) by delivery service ID
+4. Calculates max delivery time across shipment products
+5. Sets period and description on `CalculationResult`
+
+**Registration:** via `init.php` (recommended) or `include.php` module. See [INTEGRATION.md](INTEGRATION.md).
 
 Data source: `catalog_app_data.DELIVERY_TIME` field (synced from Catalog.app).
+
+**Configuration required:**
+- City location codes mapping in `DeliveryEventHandler::getCityFromLocation()`
+- Pickup service IDs in `DeliveryEventHandler::getDeliveryType()`
